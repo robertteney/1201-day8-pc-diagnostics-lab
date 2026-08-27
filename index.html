@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gaming PC Diagnostic Simulator</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --text: #1e293b;
+      --muted: #64748b;
+      --success: #15803d;
+      --danger: #b91c1c;
+      --warning: #b45309;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header Bar */
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    /* Scenario Drawer Toggle */
+    .drawer-toggle {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      z-index: 1100;
+    }
+
+    .drawer-toggle:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Sliding Scenario Drawer */
+    #slideoutDrawer {
+      position: fixed;
+      top: 0;
+      left: -420px;
+      width: 400px;
+      height: 100%;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      box-shadow: 10px 0 25px rgba(0, 0, 0, 0.15);
+      padding: 30px 24px;
+      overflow-y: auto;
+      transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+    }
+
+    #slideoutDrawer.show {
+      left: 0;
+    }
+
+    #slideoutDrawer h2 {
+      font-size: 1.25rem;
+      color: #0f172a;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+
+    #slideoutDrawer p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .overlay-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+    }
+
+    /* Main Workspace Layout */
+    .main-workspace {
+      max-width: 1150px;
+      margin: 20px auto 30px;
+      width: 100%;
+      padding: 0 20px;
+      display: flex;
+      gap: 30px;
+      align-items: flex-start;
+      flex: 1;
+    }
+
+    /* Left Control Buttons */
+    .button-column {
+      width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .component-btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.15s ease;
+    }
+
+    .component-btn:hover {
+      border-color: var(--primary);
+      background: #f0f9ff;
+      transform: translateX(3px);
+    }
+
+    .btn-bios {
+      background: #0f172a;
+      color: #38bdf8;
+      border-color: #0284c7;
+      margin-top: 10px;
+    }
+
+    .btn-bios:hover {
+      background: #1e293b;
+      color: #38bdf8;
+    }
+
+    /* Center Vector Chassis View */
+    .chassis-view {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+    }
+
+    /* Controls Bar Below */
+    .controls-bar {
+      max-width: 1150px;
+      margin: 0 auto 30px;
+      width: 100%;
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 320px;
+    }
+
+    .form-group label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: #f8fafc;
+      color: var(--text);
+      outline: none;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s ease;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
+
+    /* Modals & Dialogs */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      width: 580px;
+      max-width: 92vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .bios-modal-box {
+      background: #000000;
+      border: 2px solid #22c55e;
+      color: #22c55e;
+      font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      width: 650px;
+    }
+
+    .explanation-item {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 850px) {
+      .main-workspace { flex-direction: column; }
+      .button-column { width: 100%; }
+      .form-group { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="drawer-toggle" onclick="toggleDrawer()">☰ Troubleshooting Scenario</button>
+  <div class="overlay-backdrop" id="overlayBackdrop" onclick="toggleDrawer()"></div>
+
+  <!-- Requirements Slideout Drawer -->
+  <aside id="slideoutDrawer">
+    <h2>Client Incident Case</h2>
+    <p>A customer recently assembled a custom-built desktop designed for high-performance gaming by installing individual retail components.</p>
+    <p style="margin-top: 12px;">While the operating system successfully boots to the desktop, the machine consistently crashes, freezes, or reboots under load within a few minutes of startup.</p>
+    <p style="margin-top: 12px;">Inspect the hardware specification telemetry and BIOS post parameters to identify the root cause and recommend the proper remediation.</p>
+  </aside>
+
+  <header>
+    <h1>Gaming PC Diagnostic Simulator</h1>
+    <p>Inspect component telemetry and BIOS parameters to diagnose the instability and select a resolution.</p>
+  </header>
+
+  <!-- Main Diagnostic Workspace -->
+  <div class="main-workspace">
+    <div class="button-column">
+      <button class="component-btn" onclick="showSpecModal('cooling')">💧 Liquid Cooling</button>
+      <button class="component-btn" onclick="showSpecModal('psu')">🔌 Power Supply</button>
+      <button class="component-btn" onclick="showSpecModal('motherboard')">🧠 Motherboard</button>
+      <button class="component-btn" onclick="showSpecModal('ram')">📏 Memory (RAM)</button>
+      <button class="component-btn" onclick="showSpecModal('gpu')">🎮 Video Card</button>
+      <button class="component-btn" onclick="showSpecModal('storage')">💾 Storage Drives</button>
+      <button class="component-btn" onclick="showSpecModal('cpu')">🖥️ CPU Processor</button>
+      <button class="component-btn btn-bios" onclick="showBiosModal()">🧾 Launch BIOS POST</button>
+    </div>
+
+    <!-- Vector PC Chassis Diagram -->
+    <div class="chassis-view">
+      <svg viewBox="0 0 250 330" width="240" height="310">
+        <defs>
+          <linearGradient id="gamingCaseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f172a"/>
+            <stop offset="100%" stop-color="#020617"/>
+          </linearGradient>
+          <linearGradient id="glassTint" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#a855f7" stop-opacity="0.05"/>
+          </linearGradient>
+          <filter id="rgbGlowCyan">
+            <feDropShadow dx="0" dy="0" stdDeviation="3.5" flood-color="#38bdf8" flood-opacity="0.8"/>
+          </filter>
+        </defs>
+
+        <!-- Outer Chassis Frame -->
+        <rect x="10" y="10" width="230" height="310" rx="12" fill="url(#gamingCaseGrad)" stroke="#38bdf8" stroke-width="2"/>
+        <rect x="22" y="25" width="206" height="280" rx="8" fill="url(#glassTint)" stroke="#38bdf8" stroke-width="1"/>
+
+        <!-- RGB Fans -->
+        <circle cx="212" cy="70" r="16" fill="none" stroke="#38bdf8" stroke-width="2.5" filter="url(#rgbGlowCyan)"/>
+        <circle cx="212" cy="140" r="16" fill="none" stroke="#38bdf8" stroke-width="2.5" filter="url(#rgbGlowCyan)"/>
+        <circle cx="212" cy="210" r="16" fill="none" stroke="#38bdf8" stroke-width="2.5" filter="url(#rgbGlowCyan)"/>
+
+        <!-- Motherboard & Cooler -->
+        <rect x="32" y="35" width="155" height="195" rx="4" fill="#0f172a" stroke="#1e293b"/>
+        <circle cx="85" cy="85" r="22" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5" filter="url(#rgbGlowCyan)"/>
+
+        <!-- RAM Sticks -->
+        <rect x="122" y="60" width="5" height="42" fill="#a855f7"/>
+        <rect x="130" y="60" width="5" height="42" fill="#a855f7"/>
+
+        <!-- Discrete GPU -->
+        <rect x="40" y="130" width="140" height="38" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="110" y="153" text-anchor="middle" font-size="9" font-weight="800" fill="#38bdf8">DISCRETE GPU</text>
+
+        <!-- PSU Shroud -->
+        <rect x="22" y="240" width="206" height="55" rx="4" fill="#020617" stroke="#1e293b"/>
+        <text x="125" y="270" text-anchor="middle" font-size="9" font-weight="800" fill="#38bdf8">POWER SUPPLY BAY</text>
+      </svg>
+      <span style="font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-top: 8px;">CUSTOM RIG HARDWARE VIEW</span>
+    </div>
+  </div>
+
+  <!-- Bottom Diagnostic Controls -->
+  <div class="controls-bar">
+    <div class="form-group">
+      <label for="causeSelect">Identified Cause</label>
+      <select id="causeSelect"></select>
+    </div>
+
+    <div class="form-group">
+      <label for="resolutionSelect">Recommended Resolution</label>
+      <select id="resolutionSelect"></select>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitDiagnostic()">Submit Findings</button>
+    <button class="btn btn-secondary" onclick="resetAll()">Reset All</button>
+  </div>
+
+  <!-- Component Spec Modal -->
+  <div class="modal-backdrop" id="specModal">
+    <div class="modal-box">
+      <h3 id="specTitle" style="color: #0f172a; font-size: 1.15rem; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;"></h3>
+      <div id="specContent" style="font-size: 0.9rem; line-height: 1.6; color: var(--text);"></div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-secondary" onclick="closeModal('specModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BIOS POST Modal -->
+  <div class="modal-backdrop" id="biosModal">
+    <div class="modal-box bios-modal-box">
+      <div id="biosContent"></div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-secondary" style="background: #22c55e; color: #000; font-weight: bold;" onclick="closeModal('biosModal')">Exit BIOS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Diagnostic Evaluation Results Modal -->
+  <div class="modal-backdrop" id="resultModal">
+    <div class="modal-box">
+      <h3 style="color: #0f172a; font-size: 1.15rem; margin-bottom: 12px;">Diagnostic Evaluation</h3>
+      <div id="scoreHeader" style="font-size: 1.15rem; font-weight: 700; margin-bottom: 12px;"></div>
+      <div id="evaluationLog"></div>
+      <div style="text-align: right; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="closeModal('resultModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Master List of Causes & Resolutions
+    const causesList = [
+      "Overclocking",
+      "Overheating",
+      "Insufficient power",
+      "Component incompatibility"
+    ];
+
+    const resolutionsList = [
+      "Lower CPU clock speed",
+      "Replace thermal paste",
+      "Replace PSU with higher wattage model",
+      "Decrease memory module frequency",
+      "Install larger radiator",
+      "Increase CPU multiplier",
+      "Run CHKDSK on NVMe drive",
+      "Update motherboard firmware"
+    ];
+
+    // Master Pool of 4 Dynamic Fault Scenarios
+    const dynamicScenarios = {
+      OVERCLOCKING: {
+        cause: "Overclocking",
+        resolution: "Lower CPU clock speed",
+        specOverrides: {
+          cpu: "x64 10-core<br>Base Clock: 3.2GHz<br>TDP 165W<br>Junction temperature: 94 C",
+          psu: "750w<br>Efficiency rating: 90%<br>Single +12V rail (62.5A)"
+        },
+        biosText: `Version 2.14.1219 - UEFI BIOS<br>
+BIOS Date: 04/18/2026<br><br>
+x64 10 Core CPU Speed: 4.5 GHz<br>
+CPU Temp: 82 C<br>
+VCore Voltage: 1.42V<br><br>
+Memory Frequency: DDR4 2666 MHz<br>
+Total Memory: 32768 MB<br><br>
+Storage: NVMe 500GB SSD, SATA 3.0TB HDD`,
+        explanationCause: "The CPU spec sheet defines a base clock of 3.2GHz, but BIOS POST reveals it is running at 4.5GHz. Unstable CPU overclocking causes voltage and thermal instability during load.",
+        explanationRes: "Lowering the CPU clock speed back to its factory 3.2GHz rating eliminates overclocking instability."
+      },
+      OVERHEATING: {
+        cause: "Overheating",
+        resolution: "Replace thermal paste",
+        specOverrides: {
+          cpu: "x64 10-core<br>Base Clock: 3.2GHz<br>TDP 165W<br>Junction temperature: 94 C",
+          cooling: "Liquid Cooling Radiator 240mm<br>Pump Speed: 2400 RPM<br>Thermal Interface: Dried/Insufficient application"
+        },
+        biosText: `Version 2.14.1219 - UEFI BIOS<br>
+BIOS Date: 04/18/2026<br><br>
+x64 10 Core CPU Speed: 3.2 GHz<br>
+CPU Idle Temp: 92 C<br>
+Liquid Pump Status: 2450 RPM<br><br>
+Memory Frequency: DDR4 2666 MHz<br>
+Total Memory: 32768 MB`,
+        explanationCause: "While the liquid cooling pump is spinning at 2450 RPM, the CPU idle temperature reaches 92 C immediately. Dried thermal paste prevents thermal transfer from the IHS to the cold plate.",
+        explanationRes: "Replacing the thermal interface material (paste) restores proper heat transfer to the liquid cooler."
+      },
+      INSUFFICIENT_POWER: {
+        cause: "Insufficient power",
+        resolution: "Replace PSU with higher wattage model",
+        specOverrides: {
+          psu: "450W Budget ATX PSU<br>Single +12V rail (35A)<br>Total System Peak Draw: 520W",
+          gpu: "High-End Discrete GPU<br>5500 compute cores<br>Power: 320W Peak Draw"
+        },
+        biosText: `Version 2.14.1219 - UEFI BIOS<br>
+BIOS Date: 04/18/2026<br><br>
+x64 10 Core CPU Speed: 3.2 GHz<br>
+CPU Temp: 42 C<br><br>
++12V Power Rail Monitor: 11.10V<br>
+PSU Capacity: 450W Total Wattage`,
+        explanationCause: "The combined peak power draw of the 165W CPU and 320W discrete GPU exceeds the 450W PSU rating, triggering trip protection under 3D load.",
+        explanationRes: "Upgrading to a 750W or higher power supply ensures adequate headroom for transient GPU spikes."
+      },
+      MEMORY_INCOMPATIBILITY: {
+        cause: "Component incompatibility",
+        resolution: "Decrease memory module frequency",
+        specOverrides: {
+          ram: "32GB (2x16GB) DDR4-4000 XMP<br>Tested Voltage: 1.45V<br>Motherboard Supported Max: DDR4-2666",
+          motherboard: "Standard ATX Chipset<br>Max Supported Memory Speed: 2666 MHz"
+        },
+        biosText: `Version 2.14.1219 - UEFI BIOS<br>
+BIOS Date: 04/18/2026<br><br>
+x64 10 Core CPU Speed: 3.2 GHz<br>
+CPU Temp: 40 C<br><br>
+Memory Frequency: DDR4 4000 MHz<br>
+Motherboard Max Qualified Frequency: 2666 MHz`,
+        explanationCause: "The DDR4-4000 RAM XMP profile exceeds the motherboard's maximum qualified frequency of 2666 MHz, causing memory controller timing crashes.",
+        explanationRes: "Decreasing the memory frequency to 2666 MHz aligns RAM speed with motherboard chipset support."
+      }
+    };
+
+    // Base Hardware Specs Database
+    const baseSpecs = {
+      cooling: "Liquid Cooling 240mm Radiator<br>Power: 40W<br>Dual 120mm PWM Fans",
+      psu: "750W ATX Power Supply<br>ATX 12V Connector<br>90% Efficiency Rating<br>Single +12V Rail",
+      motherboard: "ATX Gaming Motherboard<br>LGA Socket<br>PCIe 4.0 Support<br>Max Memory Frequency: 2666 MHz",
+      ram: "32GB (2x16GB)<br>DDR4-2666 MHz<br>Voltage: 1.2V<br>Power: 12W",
+      gpu: "Discrete High-Performance GPU<br>5500 compute cores<br>16x PCIe 4.0 Interface<br>Base clock: 1.5GHz<br>8GB GDDR6<br>Power: 225W",
+      storage: "500GB NVMe SSD (Boot Drive)<br>3.0TB SATA HDD (Storage)<br>Read Speed: 3500 MB/s",
+      cpu: "x64 10-core Processor<br>Base Clock: 3.2GHz<br>TDP 165W<br>Junction Temperature Max: 94 C"
+    };
+
+    // Active Session State
+    let activeScenarioKey = "OVERCLOCKING";
+    let activeScenario = {};
+
+    // Helper: Fisher-Yates Array Shuffle
+    function shuffle(array) {
+      let arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Initialize New Session with Random Scenario
+    function initDynamicSession() {
+      const keys = Object.keys(dynamicScenarios);
+      activeScenarioKey = keys[Math.floor(Math.random() * keys.length)];
+      activeScenario = dynamicScenarios[activeScenarioKey];
+
+      populateDropdowns();
+    }
+
+    function populateDropdowns() {
+      const causeSelect = document.getElementById("causeSelect");
+      const resSelect = document.getElementById("resolutionSelect");
+
+      causeSelect.innerHTML = '<option value="">-- Select Cause --</option>';
+      resSelect.innerHTML = '<option value="">-- Select Resolution --</option>';
+
+      shuffle(causesList).forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        causeSelect.appendChild(opt);
+      });
+
+      shuffle(resolutionsList).forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = r;
+        resSelect.appendChild(opt);
+      });
+    }
+
+    function showSpecModal(componentKey) {
+      const titleEl = document.getElementById("specTitle");
+      const contentEl = document.getElementById("specContent");
+
+      const names = {
+        cooling: "Liquid Cooling System",
+        psu: "Power Supply Unit (PSU)",
+        motherboard: "Motherboard Architecture",
+        ram: "System Memory (RAM)",
+        gpu: "Video Card (GPU)",
+        storage: "Storage Drives",
+        cpu: "Central Processing Unit (CPU)"
+      };
+
+      titleEl.textContent = names[componentKey] || "Component Telemetry";
+
+      if (activeScenario.specOverrides && activeScenario.specOverrides[componentKey]) {
+        contentEl.innerHTML = activeScenario.specOverrides[componentKey];
+      } else {
+        contentEl.innerHTML = baseSpecs[componentKey];
+      }
+
+      openModal("specModal");
+    }
+
+    function showBiosModal() {
+      const biosEl = document.getElementById("biosContent");
+      biosEl.innerHTML = activeScenario.biosText;
+      openModal("biosModal");
+    }
+
+    function submitDiagnostic() {
+      const selectedCause = document.getElementById("causeSelect").value;
+      const selectedRes = document.getElementById("resolutionSelect").value;
+
+      let score = 0;
+      let logs = [];
+
+      const causeMatch = (selectedCause === activeScenario.cause);
+      const resMatch = (selectedRes === activeScenario.resolution);
+
+      if (causeMatch) score++;
+      if (resMatch) score++;
+
+      if (causeMatch) {
+        logs.push(`<div class="explanation-item"><strong>Identified Cause:</strong> <code>${selectedCause}</code> ✅<br>${activeScenario.explanationCause}</div>`);
+      } else {
+        logs.push(`<div class="explanation-item"><strong>Identified Cause:</strong> Selected <code>${selectedCause || "Unselected"}</code> ❌ (Expected: <strong>${activeScenario.cause}</strong>).<br>${activeScenario.explanationCause}</div>`);
+      }
+
+      if (resMatch) {
+        logs.push(`<div class="explanation-item"><strong>Recommended Resolution:</strong> <code>${selectedRes}</code> ✅<br>${activeScenario.explanationRes}</div>`);
+      } else {
+        logs.push(`<div class="explanation-item"><strong>Recommended Resolution:</strong> Selected <code>${selectedRes || "Unselected"}</code> ❌ (Expected: <strong>${activeScenario.resolution}</strong>).<br>${activeScenario.explanationRes}</div>`);
+      }
+
+      const scoreHeader = document.getElementById("scoreHeader");
+      const evalLog = document.getElementById("evaluationLog");
+
+      scoreHeader.textContent = `Score: ${score} / 2`;
+      scoreHeader.style.color = score === 2 ? "var(--success)" : "var(--danger)";
+
+      if (score === 2) {
+        evalLog.innerHTML = `<p style="color:var(--success); font-weight:bold; margin-bottom:12px;">Outstanding Diagnostics! You accurately isolated the telemetry fault and applied the proper resolution.</p>` + logs.join("");
+      } else {
+        evalLog.innerHTML = logs.join("");
+      }
+
+      openModal("resultModal");
+    }
+
+    function toggleDrawer() {
+      const drawer = document.getElementById("slideoutDrawer");
+      const backdrop = document.getElementById("overlayBackdrop");
+      const isOpen = drawer.classList.contains("show");
+
+      if (isOpen) {
+        drawer.classList.remove("show");
+        backdrop.style.display = "none";
+      } else {
+        drawer.classList.add("show");
+        backdrop.style.display = "block";
+      }
+    }
+
+    function openModal(id) {
+      document.getElementById(id).style.display = "flex";
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function resetAll() {
+      initDynamicSession();
+      closeModal("resultModal");
+      closeModal("specModal");
+      closeModal("biosModal");
+    }
+
+    window.onload = function() {
+      initDynamicSession();
+    };
+  </script>
+</body>
+</html>
